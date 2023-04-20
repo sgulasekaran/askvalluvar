@@ -42,11 +42,19 @@ def load_kurals():
     return df
 
 @st.cache_data
+def load_embedder_model(embedder_model_name):
+    return SentenceTransformer(embedder_model_name)
+
+@st.cache_data
 def load_ann_searcher(sentences, embedder_model_name, dimension):
     embedder_model = SentenceTransformer(embedder_model_name)
     ann_searcher = HnswIndex(embedder_model, dimension=dimension)
     ann_searcher.add_to_index(sentences)
     return ann_searcher
+
+@st.cache_data
+def load_english_explanation(kurals):
+    return kurals.iloc[:,2]
 
 @st.cache_data
 def load_crossencoder():
@@ -55,8 +63,8 @@ def load_crossencoder():
     return crossencoder_model
 
 kurals = load_kurals()
-explanation_sentences = kurals.iloc[:,2]
-embedder_model_name = "sentence-transformers/all-MiniLM-L12-v2"
+explanation_sentences = load_english_explanation(kurals)
+embedder_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 dimension = 384
 ann_searcher = load_ann_searcher(explanation_sentences, embedder_model_name, dimension)
 crossencoder_model = load_crossencoder()
@@ -78,10 +86,8 @@ with st.spinner('Transformer is searching...'):
     crossencoder_score = crossencoder_model.predict(subset, convert_to_tensor=True)
     nearest_neighbors["Score"] = torch.nn.Sigmoid()(crossencoder_score)
     results = nearest_neighbors.sort_values(by="Score", ascending=False).iloc[:10]
-
-
-for index, row in results.iterrows():
-    st.markdown("**"+"Kural "+ str(row["Kural Number"])+"**")
-    st.markdown("**"+row["Kural In Tamil"]+"**")
-    st.markdown(row["Explanation"])
-    st.divider()
+    for index, row in results.iterrows():
+        st.markdown("**"+"Kural "+ str(row["Kural Number"])+"**")
+        st.markdown("**"+row["Kural In Tamil"]+"**")
+        st.markdown(row["Explanation"])
+        st.divider()
